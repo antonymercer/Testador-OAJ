@@ -1,28 +1,31 @@
-import pymupdf
 import os
+
+import pymupdf
 
 
 class Redactor:
 
     def __init__(self):
 
-        # =====================================================
-        # CONFIGURACIÓN DEL TESTADO
-        # =====================================================
+        # ==========================================
+        # CONFIGURACIÓN ORIGINAL
+        # ==========================================
 
-        # Altura uniforme de todos los testados
-        self.alto_testado = 8
+        self.ancho_testado = 250
+        self.alto_testado = 10
 
-        # Márgenes pequeños
-        self.margen_x = 1
-        self.margen_y = 1
+        self.margen_x = 2
+        self.margen_y = 2
 
+    # ==========================================
+    # GENERAR PDF
+    # ==========================================
 
-    # =====================================================
-    # GENERAR PDF TESTADO
-    # =====================================================
-
-    def generar_pdf(self, ruta_pdf, campos):
+    def generar_pdf(
+        self,
+        ruta_pdf,
+        campos
+    ):
 
         if not ruta_pdf:
             raise ValueError(
@@ -31,281 +34,198 @@ class Redactor:
 
         if not os.path.exists(ruta_pdf):
             raise FileNotFoundError(
-                f"No existe el archivo: {ruta_pdf}"
+                f"No existe el archivo:\n{ruta_pdf}"
             )
 
-
-        documento = pymupdf.open(ruta_pdf)
-
+        documento = pymupdf.open(
+            ruta_pdf
+        )
 
         try:
 
-            # =================================================
-            # 1. OBTENER CAMPOS QUE SE TESTAN
-            # =================================================
+            redactados = 0
 
-            campos_testar = []
+            # ==========================================
+            # RECORRER CAMPOS
+            # ==========================================
 
             for campo in campos:
 
                 accion = campo.get(
                     "accion",
-                    "REVISAR"
+                    "IGNORAR"
                 )
 
-                if accion != "TESTAR":
+                forzar = campo.get(
+                    "forzar_testado",
+                    False
+                )
+
+                # --------------------------------------
+                # SOLO TESTAR
+                # --------------------------------------
+
+                if (
+                    accion != "TESTAR"
+                    and not forzar
+                ):
                     continue
 
+                # --------------------------------------
+                # PÁGINA
+                # --------------------------------------
 
-                ancho = campo.get(
-                    "ancho"
-                )
-
-                if ancho is None:
-                    continue
-
-                if ancho <= 0:
-                    continue
-
-
-                campos_testar.append(
-                    campo
-                )
-
-
-            # =================================================
-            # 2. SI NO HAY CAMPOS
-            # =================================================
-
-            if not campos_testar:
-
-                print(
-                    "No hay campos para testar."
-                )
-
-                return None
-
-
-            # =================================================
-            # 3. ANCHO UNIFORME POR SECCIÓN
-            # =================================================
-
-            anchos_por_seccion = {}
-
-
-            for campo in campos_testar:
-
-                seccion = campo.get(
-                    "seccion",
-                    "SIN SECCION"
-                )
-
-                ancho = campo["ancho"]
-
-
-                if seccion not in anchos_por_seccion:
-
-                    anchos_por_seccion[
-                        seccion
-                    ] = ancho
-
-                else:
-
-                    if ancho > anchos_por_seccion[
-                        seccion
-                    ]:
-
-                        anchos_por_seccion[
-                            seccion
-                        ] = ancho
-
-
-            # =================================================
-            # MOSTRAR CONFIGURACIÓN
-            # =================================================
-
-            print()
-            print(
-                "=============================="
-            )
-
-            print(
-                "ANCHOS UNIFORMES POR SECCIÓN"
-            )
-
-            print(
-                "=============================="
-            )
-
-
-            for seccion, ancho in (
-                anchos_por_seccion.items()
-            ):
-
-                print(
-                    f"{seccion} -> "
-                    f"{ancho}"
-                )
-
-
-            print(
-                "=============================="
-            )
-
-
-            # =================================================
-            # 4. RECORRER CAMPOS
-            # =================================================
-
-            for campo in campos_testar:
-
-                pagina_num = campo.get(
+                pagina_numero = campo.get(
                     "pagina"
                 )
 
-                x = campo.get(
-                    "x"
-                )
-
-                y = campo.get(
-                    "y"
-                )
-
-
-                if pagina_num is None:
+                if pagina_numero is None:
                     continue
-
-                if x is None or y is None:
-                    continue
-
-
-                # =============================================
-                # PÁGINA
-                # =============================================
 
                 indice_pagina = (
-                    pagina_num - 1
+                    pagina_numero - 1
                 )
 
-
-                if (
-                    indice_pagina < 0
-                    or indice_pagina >= len(documento)
+                if not (
+                    0 <= indice_pagina < len(documento)
                 ):
-
                     continue
-
 
                 pagina = documento[
                     indice_pagina
                 ]
 
+                # --------------------------------------
+                # COORDENADAS
+                # --------------------------------------
 
-                # =============================================
-                # ANCHO DE LA SECCIÓN
-                # =============================================
+                x = campo.get("x")
+                y = campo.get("y")
+                ancho = campo.get("ancho")
+                alto = campo.get("alto")
 
-                seccion = campo.get(
-                    "seccion",
-                    "SIN SECCION"
-                )
-
-
-                ancho_uniforme = (
-                    anchos_por_seccion[
-                        seccion
-                    ]
-                )
-
-
-                # =============================================
-                # RECTÁNGULO
-                # =============================================
-
-                x0 = max(
-                    0,
-                    x - self.margen_x
-                )
-
-
-                y0 = max(
-                    0,
-                    y - self.margen_y
-                )
-
-
-                x1 = min(
-                    pagina.rect.width,
-                    x
-                    + ancho_uniforme
-                    + self.margen_x
-                )
-
-
-                y1 = min(
-                    pagina.rect.height,
-                    y
-                    + self.alto_testado
-                    + self.margen_y
-                )
-
-
-                # =============================================
-                # VALIDAR RECTÁNGULO
-                # =============================================
-
-                if x1 <= x0:
+                if None in (
+                    x,
+                    y,
+                    ancho,
+                    alto
+                ):
                     continue
 
-                if y1 <= y0:
+                if (
+                    ancho <= 0
+                    or alto <= 0
+                ):
                     continue
 
+                # ======================================
+                # RECTÁNGULO NORMAL
+                # ======================================
 
-                rect = pymupdf.Rect(
-                    x0,
-                    y0,
-                    x1,
-                    y1
+                ancho_necesario = max(
+                    self.ancho_testado,
+                    ancho + (
+                        2 * self.margen_x
+                    )
                 )
 
+                alto_necesario = (
+                    self.alto_testado
+                )
 
-                # =============================================
-                # DIBUJAR TESTADO
-                # =============================================
+                # ======================================
+                # ACLARACIONES / OBSERVACIONES
+                # ======================================
 
-                pagina.draw_rect(
+                nombre_campo = str(
+                    campo.get(
+                        "campo",
+                        ""
+                    )
+                ).upper()
 
-                    rect,
+                if (
+                    "ACLARACIONES" in nombre_campo
+                    or "OBSERVACIONES" in nombre_campo
+                ):
 
-                    color=(0, 0, 0),
+                    # Sólo estas filas serán
+                    # ligeramente más altas.
+                    alto_necesario = 20
 
+                # ======================================
+                # CREAR RECTÁNGULO
+                # ======================================
+
+                rectangulo = pymupdf.Rect(
+
+                    max(
+                        0,
+                        x - self.margen_x
+                    ),
+
+                    max(
+                        0,
+                        y - self.margen_y
+                    ),
+
+                    min(
+                        pagina.rect.width,
+                        x
+                        + ancho_necesario
+                        + self.margen_x
+                    ),
+
+                    min(
+                        pagina.rect.height,
+                        y
+                        + alto_necesario
+                        + self.margen_y
+                    )
+                )
+
+                # ======================================
+                # AGREGAR REDACCIÓN
+                # ======================================
+
+                pagina.add_redact_annot(
+                    rectangulo,
                     fill=(0, 0, 0),
-
-                    overlay=True
-
+                    cross_out=False
                 )
 
+                redactados += 1
 
-                print(
-                    f"{seccion} | "
-                    f"{campo.get('campo', '')} | "
-                    f"TESTADO"
+            # ==========================================
+            # APLICAR
+            # ==========================================
+
+            for pagina in documento:
+
+                pagina.apply_redactions()
+
+            # ==========================================
+            # VALIDAR
+            # ==========================================
+
+            if redactados == 0:
+
+                raise ValueError(
+                    "No se encontraron campos marcados "
+                    "para testar."
                 )
 
-
-            # =================================================
-            # 5. NOMBRE DEL ARCHIVO
-            # =================================================
+            # ==========================================
+            # ARCHIVO DE SALIDA
+            # ==========================================
 
             carpeta = os.path.dirname(
                 ruta_pdf
             )
 
-
             nombre = os.path.basename(
                 ruta_pdf
             )
-
 
             nombre_sin_extension = (
                 os.path.splitext(
@@ -313,41 +233,49 @@ class Redactor:
                 )[0]
             )
 
-
             ruta_salida = os.path.join(
-
                 carpeta,
-
-                nombre_sin_extension
-                + "_TESTADO.pdf"
-
+                f"{nombre_sin_extension}_TESTADO.pdf"
             )
 
+            # ==========================================
+            # ELIMINAR ANTERIOR
+            # ==========================================
 
-            # =================================================
-            # 6. GUARDAR
-            # =================================================
+            if os.path.exists(
+                ruta_salida
+            ):
+                os.remove(
+                    ruta_salida
+                )
+
+            # ==========================================
+            # GUARDAR
+            # ==========================================
 
             documento.save(
-
                 ruta_salida,
-
                 garbage=4,
-
                 deflate=True
-
             )
-
 
             print()
             print(
-                f"PDF generado: {ruta_salida}"
+                "=============================="
             )
-
+            print(
+                f"REDACCIONES APLICADAS: {redactados}"
+            )
+            print(
+                f"ARCHIVO: {ruta_salida}"
+            )
+            print(
+                "=============================="
+            )
+            print()
 
             return ruta_salida
 
-
         finally:
 
-            documento.close() 
+            documento.close()

@@ -93,6 +93,35 @@ class Reglas:
 
 
         # =====================================================
+        # DATOS PATRIMONIALES
+        # =====================================================
+
+        if seccion == "Datos del cónyuge":
+
+            return "TESTAR"
+
+        if seccion == "Ingresos netos del declarante, pareja y/o dependientes económicos":
+
+            return "TESTAR"
+
+        if seccion == "Bienes inmuebles":
+
+            return "TESTAR"
+
+        if seccion == "Vehículos":
+
+            return "TESTAR"
+
+        if seccion == "Inversiones, cuentas bancarias y otro tipo de valores / activos":
+
+            return "TESTAR"
+
+        if seccion == "Adeudos / pasivos / créditos / tarjetas de crédito o departamentales":
+
+            return "TESTAR"
+
+
+        # =====================================================
         # CUALQUIER OTRA SECCIÓN
         # =====================================================
 
