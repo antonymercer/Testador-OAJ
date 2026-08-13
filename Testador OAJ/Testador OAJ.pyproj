@@ -1,0 +1,66 @@
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>5fa8af87-25bb-4e06-a4d1-878b752c36f5</ProjectGuid>
+    <ProjectHome>.</ProjectHome>
+    <StartupFile>main.py</StartupFile>
+    <SearchPath>
+    </SearchPath>
+    <WorkingDirectory>.</WorkingDirectory>
+    <OutputPath>.</OutputPath>
+    <Name>Testador OAJ</Name>
+    <RootNamespace>Testador OAJ</RootNamespace>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <DebugSymbols>true</DebugSymbols>
+    <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <DebugSymbols>true</DebugSymbols>
+    <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="app.py" />
+    <Compile Include="main.py" />
+    <Compile Include="modelos\campo.py" />
+    <Compile Include="modelos\documento.py" />
+    <Compile Include="modelos\pagina.py" />
+    <Compile Include="modelos\_init_.py" />
+    <Compile Include="motor\analizador.py" />
+    <Compile Include="motor\constructor_tabla.py" />
+    <Compile Include="motor\lector_pdf.py" />
+    <Compile Include="motor\motor_oaj.py" />
+    <Compile Include="motor\redactor.py" />
+    <Compile Include="motor\reglas.py" />
+    <Compile Include="motor\seccion.py" />
+    <Compile Include="motor\seccion_datos_generales.py" />
+    <Compile Include="motor\_init_.py" />
+    <Compile Include="ui\barra_inferior.py" />
+    <Compile Include="ui\canvas_pdf.py" />
+    <Compile Include="ui\panel_campos.py" />
+    <Compile Include="ui\panel_documento.py" />
+    <Compile Include="ui\panel_estado.py" />
+    <Compile Include="ui\tarjeta_campo.py" />
+    <Compile Include="ui\visor_pdf.py" />
+    <Compile Include="ui\_init_.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="entrada\" />
+    <Folder Include="logs\" />
+    <Folder Include="motor\" />
+    <Folder Include="modelos\" />
+    <Folder Include="recursos\" />
+    <Folder Include="salida\" />
+    <Folder Include="ui\" />
+  </ItemGroup>
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
+  <!-- Uncomment the CoreCompile target to enable the Build command in
+       Visual Studio and specify your pre- and post-build commands in
+       the BeforeBuild and AfterBuild targets below. -->
+  <!--<Target Name="CoreCompile" />-->
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+</Project>
