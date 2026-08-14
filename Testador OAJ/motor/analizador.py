@@ -1,123 +1,60 @@
 import re
 import unicodedata
 
-from motor.reglas import Reglas
-
 
 class Analizador:
 
     def __init__(self):
 
-        self.reglas = Reglas()
-
         # =====================================================
-        # CONFIGURACIÓN DE SECCIONES
+        # CONFIGURACIÓN
         # =====================================================
 
         self.secciones = {
 
-            "Datos Generales": {
-                "modo": "LISTA",
-                "campos": [
-                    "Nombre(s)",
-                    "Primer apellido",
-                    "Segundo apellido",
-                    "CURP",
-                    "RFC",
-                    "Homoclave",
-                    "Correo electrónico institucional",
-                    "Correo electrónico personal / Alterno",
-                    "Número celular personal",
-                    "Situación personal / estado civil",
-                    "** Régimen matrimonial",
-                    "País de nacimiento",
-                    "Nacionalidad (es)",
-                    "¿Te desempeñaste como servidor público el año inmediato anterior?",
-                ]
-            },
-
-            "Domicilio del declarante": {
-                "modo": "LISTA",
-                "campos": [
-                    "Lugar en que reside actualmente",
-                    "Calle",
-                    "Número exterior",
-                    "Número interior",
-                    "Colonia / Localidad",
-                    "Entidad federativa",
-                    "Municipio / Alcaldía",
-                    "Código postal",
-                ]
-            },
-
-            # =================================================
             # NO TESTAR
-            # =================================================
+            "Datos Generales":
+                "IGNORAR",
 
-            "Datos curriculares del declarante": {
-                "modo": "IGNORAR",
-                "campos": []
-            },
+            "Domicilio del declarante":
+                "IGNORAR",
 
-            # =================================================
-            # DATOS DEL EMPLEO
-            # =================================================
+            "Datos curriculares del declarante":
+                "IGNORAR",
 
-            "Datos del empleo, cargo o comisión actual": {
-                "modo": "LISTA",
-                "campos": [
-                    "Número de expediente del declarante",
-                ]
-            },
+            "Datos del empleo, cargo o comisión actual":
+                "IGNORAR",
 
-            # =================================================
-            # TODO
-            # =================================================
+            # TODO TESTAR
+            "Datos de la pareja":
+                "TODO",
 
-            "Datos de la pareja": {
-                "modo": "TODO",
-                "campos": []
-            },
+            "Datos del dependiente económico":
+                "TODO",
 
-            "Datos del dependiente económico": {
-                "modo": "TODO",
-                "campos": []
-            },
+            "Datos del cónyuge":
+                "TODO",
 
-            "Datos del cónyuge": {
-                "modo": "TODO",
-                "campos": []
-            },
+            # TESTAR SOLO DATOS SENSIBLES
+            "Ingresos netos del declarante, pareja y/o dependientes económicos":
+                "SENSIBLES",
 
-            "Ingresos netos del declarante, pareja y/o dependientes económicos": {
-                "modo": "TODO",
-                "campos": []
-            },
+            "Bienes inmuebles":
+                "SENSIBLES",
 
-            "Bienes inmuebles": {
-                "modo": "TODO",
-                "campos": []
-            },
+            "Vehículos":
+                "SENSIBLES",
 
-            "Vehículos": {
-                "modo": "TODO",
-                "campos": []
-            },
+            "Inversiones, cuentas bancarias y otro tipo de valores / activos":
+                "SENSIBLES",
 
-            "Inversiones, cuentas bancarias y otro tipo de valores / activos": {
-                "modo": "TODO",
-                "campos": []
-            },
-
-            "Adeudos / pasivos / créditos / tarjetas de crédito o departamentales": {
-                "modo": "TODO",
-                "campos": []
-            },
+            "Adeudos / pasivos / créditos / tarjetas de crédito o departamentales":
+                "SENSIBLES",
         }
 
-    # =========================================================
+    # =====================================================
     # NORMALIZAR
-    # =========================================================
+    # =====================================================
 
     def normalizar(self, texto):
 
@@ -127,9 +64,9 @@ class Analizador:
         )
 
         texto = "".join(
-            caracter
-            for caracter in texto
-            if unicodedata.category(caracter) != "Mn"
+            c
+            for c in texto
+            if unicodedata.category(c) != "Mn"
         )
 
         return re.sub(
@@ -138,33 +75,19 @@ class Analizador:
             texto.upper()
         ).strip()
 
-    # =========================================================
+    # =====================================================
     # IDENTIFICAR SECCIÓN
-    # =========================================================
+    # =====================================================
 
-    def identificar_seccion(
-        self,
-        descripcion,
-        contenido=""
-    ):
+    def identificar_seccion(self, texto):
 
-        texto_descripcion = self.normalizar(
-            descripcion
+        texto = self.normalizar(
+            texto
         )
 
-        texto_contenido = self.normalizar(
-            contenido
-        )
-
-        textos = [
-            texto_descripcion,
-            texto_contenido,
-            f"{texto_descripcion} {texto_contenido}".strip()
-        ]
-
-        # =====================================================
-        # SECCIONES CONFIGURADAS
-        # =====================================================
+        # ---------------------------------------------
+        # TÍTULOS EXACTOS
+        # ---------------------------------------------
 
         for seccion in self.secciones:
 
@@ -172,186 +95,67 @@ class Analizador:
                 seccion
             )
 
-            for texto in textos:
+            if (
+                texto == titulo
+                or texto.startswith(
+                    titulo
+                )
+            ):
+                return seccion
 
-                if not texto:
-                    continue
-
-                if (
-                    texto == titulo
-                    or texto.startswith(titulo)
-                    
-                ):
-                    return seccion
-
-        # =====================================================
+        # ---------------------------------------------
         # CASOS ESPECIALES
-        # =====================================================
+        # ---------------------------------------------
 
-        for texto in textos:
+        if "DATOS DEL CONYUGE" in texto:
+            return "Datos del cónyuge"
 
-            if not texto:
-                continue
+        if "DATOS DE LA PAREJA" in texto:
+            return "Datos de la pareja"
 
-            if "DATOS DEL CONYUGE" in texto:
-                return "Datos del cónyuge"
+        if "DEPENDIENTE ECONOMICO" in texto:
+            return "Datos del dependiente económico"
 
-            if "DATOS DE LA PAREJA" in texto:
-                return "Datos de la pareja"
+        if "BIENES INMUEBLES" in texto:
+            return "Bienes inmuebles"
 
-            if "DEPENDIENTE ECONOMICO" in texto:
-                return "Datos del dependiente económico"
+        if "VEHICULOS" in texto:
+            return "Vehículos"
 
-            if "BIENES INMUEBLES" in texto:
-                return "Bienes inmuebles"
-
-            if "VEHICULOS" in texto:
-                return "Vehículos"
-
-            if "INGRESOS NETOS" in texto:
-                return (
-                    "Ingresos netos del declarante, "
-                    "pareja y/o dependientes económicos"
-                )
-
-            if (
-                "INVERSIONES" in texto
-                and (
-                    "CUENTAS BANCARIAS" in texto
-                    or "ACTIVOS" in texto
-                )
-            ):
-                return (
-                    "Inversiones, cuentas bancarias "
-                    "y otro tipo de valores / activos"
-                )
-
-            if (
-                "ADEUDOS" in texto
-                or "PASIVOS" in texto
-            ):
-                return (
-                    "Adeudos / pasivos / créditos / "
-                    "tarjetas de crédito o departamentales"
-                )
-
-        return None
-
-    # =========================================================
-    # IDENTIFICAR CAMPO
-    # =========================================================
-
-    def identificar_campo(
-        self,
-        descripcion,
-        contenido,
-        campos
-    ):
-
-        descripcion_normalizada = self.normalizar(
-            descripcion
-        )
-
-        contenido_normalizado = self.normalizar(
-            contenido
-        )
-
-        textos = [
-            descripcion_normalizada,
-            contenido_normalizado,
-            f"{descripcion_normalizada} "
-            f"{contenido_normalizado}".strip()
-        ]
-
-        for campo in campos:
-
-            campo_normalizado = self.normalizar(
-                campo
+        if "INGRESOS NETOS" in texto:
+            return (
+                "Ingresos netos del declarante, "
+                "pareja y/o dependientes económicos"
             )
-
-            for texto in textos:
-
-                if not texto:
-                    continue
-
-                if texto == campo_normalizado:
-                    return campo
-
-                if texto.startswith(
-                    campo_normalizado + " "
-                ):
-                    return campo
-
-                if campo_normalizado in texto:
-                    return campo
-
-        return None
-
-    # =========================================================
-    # COORDENADAS
-    # =========================================================
-
-    def obtener_coordenadas(self, fila):
-
-        # -----------------------------------------
-        # Preferir CONTENIDO
-        # -----------------------------------------
 
         if (
-            "contenido_x0" in fila
-            and "contenido_y0" in fila
-            and "contenido_x1" in fila
-            and "contenido_y1" in fila
+            "INVERSIONES" in texto
+            and (
+                "CUENTAS BANCARIAS" in texto
+                or "ACTIVOS" in texto
+            )
         ):
-
-            x = fila["contenido_x0"]
-            y = fila["contenido_y0"]
-
-            ancho = (
-                fila["contenido_x1"]
-                - fila["contenido_x0"]
+            return (
+                "Inversiones, cuentas bancarias "
+                "y otro tipo de valores / activos"
             )
-
-            alto = (
-                fila["contenido_y1"]
-                - fila["contenido_y0"]
-            )
-
-            return x, y, ancho, alto
-
-        # -----------------------------------------
-        # Respaldo: DESCRIPCIÓN
-        # -----------------------------------------
 
         if (
-            "descripcion_x0" in fila
-            and "descripcion_y0" in fila
-            and "descripcion_x1" in fila
-            and "descripcion_y1" in fila
+            "ADEUDOS" in texto
+            or "PASIVOS" in texto
         ):
-
-            x = fila["descripcion_x0"]
-            y = fila["descripcion_y0"]
-
-            ancho = (
-                fila["descripcion_x1"]
-                - fila["descripcion_x0"]
+            return (
+                "Adeudos / pasivos / créditos / "
+                "tarjetas de crédito o departamentales"
             )
-
-            alto = (
-                fila["descripcion_y1"]
-                - fila["descripcion_y0"]
-            )
-
-            return x, y, ancho, alto
 
         return None
 
-    # =========================================================
+    # =====================================================
     # PIE DE PÁGINA
-    # =========================================================
+    # =====================================================
 
-    def _es_pie_de_pagina(self, texto):
+    def es_pie(self, texto):
 
         texto = self.normalizar(
             texto
@@ -361,58 +165,52 @@ class Analizador:
             (
                 "CV ",
                 "CD ",
-                "PAG. ",
-                "PAG "
+                "PAG ",
+                "PÁG "
             )
         )
 
-    # =========================================================
-    # REGEX DE MONTO
-    # =========================================================
+    # =====================================================
+    # DETECTAR MONTOS
+    # =====================================================
 
-    def _extraer_montos(self, texto):
+    def extraer_montos(self, texto):
 
         if not texto:
             return []
 
-        patron = (
-            r"\$\s*"
-            r"\d{1,3}"
-            r"(?:,\d{3})*"
-            r"(?:\.\d{1,2})?"
-        )
-
         return re.findall(
-            patron,
+            r"\$\s*\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?",
             texto
         )
 
-    # =========================================================
-    # ¿TIENE CÓNYUGE?
-    # =========================================================
+    # =====================================================
+    # DETECTAR CÓNYUGE
+    # =====================================================
 
-    def _contiene_conyuge(
+    def contiene_conyuge(
         self,
         descripcion,
         contenido
     ):
 
         texto = (
-            self.normalizar(descripcion)
+            self.normalizar(
+                descripcion
+            )
             + " "
-            + self.normalizar(contenido)
+            + self.normalizar(
+                contenido
+            )
         )
 
-        return (
-            "CONYUGE" in texto
-            or "CÓNYUGE" in texto
-        )
+        return "CONYUGE" in texto
 
-    # =========================================================
-    # ¿ES ACLARACIÓN?
-    # =========================================================
+    # =====================================================
+    # DETECTAR ACLARACIONES
+    # =====================================================
 
-    def _es_aclaracion(
+    def es_aclaracion(
         self,
         descripcion
     ):
@@ -426,120 +224,69 @@ class Analizador:
             or "OBSERVACIONES" in texto
         )
 
-    # =========================================================
-    # ¿ES SERVIDOR PÚBLICO?
-    # =========================================================
+    # =====================================================
+    # COORDENADAS DEL CONTENIDO
+    # =====================================================
 
-    def _es_pregunta_servidor_publico(
+    def obtener_coordenadas(
         self,
-        descripcion
+        fila
     ):
 
-        texto = self.normalizar(
-            descripcion
+        claves = (
+            "contenido_x0",
+            "contenido_y0",
+            "contenido_x1",
+            "contenido_y1",
+        )
+
+        if not all(
+            clave in fila
+            for clave in claves
+        ):
+            return None
+
+        x = fila[
+            "contenido_x0"
+        ]
+
+        y = fila[
+            "contenido_y0"
+        ]
+
+        ancho = (
+            fila["contenido_x1"]
+            - fila["contenido_x0"]
+        )
+
+        alto = (
+            fila["contenido_y1"]
+            - fila["contenido_y0"]
         )
 
         return (
-            "TE DESEMPENASTE COMO SERVIDOR PUBLICO"
-            in texto
+            x,
+            y,
+            ancho,
+            alto
         )
 
-    # =========================================================
-    # ¿ES FILA SENSIBLE?
-    # =========================================================
-
-    def _es_campo_sensible(
-        self,
-        descripcion,
-        contenido
-    ):
-
-        texto = self.normalizar(
-            descripcion
-        )
-
-        # =====================================================
-        # CÓNYUGE
-        # =====================================================
-
-        if self._contiene_conyuge(
-            descripcion,
-            contenido
-        ):
-            return True
-
-        # =====================================================
-        # ACLARACIONES / OBSERVACIONES
-        # =====================================================
-
-        if self._es_aclaracion(
-            descripcion
-        ):
-            return True
-
-        # =====================================================
-        # ETIQUETAS SENSIBLES
-        # =====================================================
-
-        etiquetas = (
-
-            "MONTO",
-            "VALOR",
-            "PRECIO",
-            "SALDO INSOLUTO",
-
-            "FOLIO",
-            "DATOS DEL REGISTRO",
-
-            "NUMERO DE SERIE",
-            "NUMERO DE REGISTRO",
-
-            "NOMBRE O RAZON SOCIAL",
-            "NOMBRE, DENOMINACION O RAZON SOCIAL",
-            "NOMBRE, INSTITUCION O RAZON SOCIAL",
-            "INSTITUCION O RAZON SOCIAL",
-
-            "RFC",
-            "EXPEDIENTE",
-        )
-
-        if any(
-            etiqueta in texto
-            for etiqueta in etiquetas
-        ):
-            return True
-
-        # =====================================================
-        # MONTOS DENTRO DE DESCRIPCIÓN O CONTENIDO
-        # =====================================================
-
-        if self._extraer_montos(
-            descripcion
-        ):
-            return True
-
-        if self._extraer_montos(
-            contenido
-        ):
-            return True
-
-        return False
-
-    # =========================================================
+    # =====================================================
     # CREAR CAMPO
-    # =========================================================
+    # =====================================================
 
-    def _crear_campo(
+    def crear_campo(
         self,
         fila,
-        campo,
-        valor=None,
-        seccion=None,
-        forzar_testado=False
+        nombre,
+        valor,
+        seccion
     ):
 
-        coordenadas = self.obtener_coordenadas(
-            fila
+        coordenadas = (
+            self.obtener_coordenadas(
+                fila
+            )
         )
 
         if coordenadas is None:
@@ -549,104 +296,62 @@ class Analizador:
 
         return {
 
-            "seccion": (
-                seccion
-                or fila.get(
-                    "seccion",
-                    "Regla especial"
-                )
-            ),
+            "seccion": seccion,
 
-            "campo": campo,
+            "campo": nombre,
 
-            "valor": (
-                fila.get(
-                    "contenido",
-                    ""
-                )
-                if valor is None
-                else valor
-            ),
+            "valor": valor,
 
             "pagina": fila.get(
                 "pagina"
             ),
 
             "x": x,
+
             "y": y,
+
             "ancho": ancho,
+
             "alto": alto,
 
             "accion": "IGNORAR",
 
-            "forzar_testado": (
-                forzar_testado
-            ),
+            "forzar_testado": True,
         }
 
-    # =========================================================
-    # CREAR CAMPO FORZADO
-    # =========================================================
+    # =====================================================
+    # AGREGAR SIN DUPLICAR
+    # =====================================================
 
-    def _crear_campo_forzado(
-        self,
-        fila,
-        seccion="Regla patrimonial"
-    ):
-
-        descripcion = fila.get(
-            "descripcion",
-            ""
-        ).strip()
-
-        contenido = fila.get(
-            "contenido",
-            ""
-        ).strip()
-
-        if not descripcion:
-            return None
-
-        return self._crear_campo(
-            fila,
-            descripcion,
-            contenido,
-            seccion,
-            True
-        )
-
-    # =========================================================
-    # AGREGAR SI NO EXISTE
-    # =========================================================
-
-    def _agregar_si_no_existe(
+    def agregar(
         self,
         campos,
-        nuevo
+        campo
     ):
 
-        if nuevo is None:
+        if campo is None:
             return
 
-        for campo in campos:
+        for existente in campos:
 
             misma_ubicacion = (
 
-                campo.get(
+                existente.get(
                     "pagina"
                 )
-                == nuevo.get(
+                == campo.get(
                     "pagina"
                 )
 
                 and
 
                 abs(
-                    campo.get(
+                    existente.get(
                         "x",
                         -1
                     )
-                    - nuevo.get(
+                    -
+                    campo.get(
                         "x",
                         -2
                     )
@@ -655,11 +360,12 @@ class Analizador:
                 and
 
                 abs(
-                    campo.get(
+                    existente.get(
                         "y",
                         -1
                     )
-                    - nuevo.get(
+                    -
+                    campo.get(
                         "y",
                         -2
                     )
@@ -668,186 +374,89 @@ class Analizador:
 
             if misma_ubicacion:
 
-                campo[
+                existente[
                     "forzar_testado"
                 ] = True
 
                 return
 
         campos.append(
-            nuevo
+            campo
         )
 
-    # =========================================================
-    # AGREGAR MONTO
-    # =========================================================
-
-    def _agregar_montos_de_fila(
-        self,
-        fila,
-        campos
-    ):
-
-        descripcion = fila.get(
-            "descripcion",
-            ""
-        ).strip()
-
-        contenido = fila.get(
-            "contenido",
-            ""
-        ).strip()
-
-        textos = [
-            descripcion,
-            contenido
-        ]
-
-        for texto in textos:
-
-            montos = self._extraer_montos(
-                texto
-            )
-
-            if not montos:
-                continue
-
-            for monto in montos:
-
-                nuevo = self._crear_campo(
-                    fila,
-                    "Monto",
-                    monto,
-                    "Montos",
-                    True
-                )
-
-                self._agregar_si_no_existe(
-                    campos,
-                    nuevo
-                )
-
-    # =========================================================
-    # AGREGAR ACLARACIÓN
-    # =========================================================
-
-    def _agregar_aclaracion(
-        self,
-        fila,
-        campos
-    ):
-
-        descripcion = fila.get(
-            "descripcion",
-            ""
-        ).strip()
-
-        contenido = fila.get(
-            "contenido",
-            ""
-        ).strip()
-
-        if not contenido:
-            return
-
-        if not self._es_aclaracion(
-            descripcion
-        ):
-            return
-
-        nuevo = self._crear_campo(
-            fila,
-            descripcion,
-            contenido,
-            "Aclaraciones",
-            True
-        )
-
-        self._agregar_si_no_existe(
-            campos,
-            nuevo
-        )
-
-    # =========================================================
+    # =====================================================
     # SERVIDOR PÚBLICO
-    # =========================================================
+    # =====================================================
 
-    def _agregar_servidor_publico(
+    def detectar_servidor_publico(
         self,
         filas,
         indice,
         campos
     ):
 
-        fila = filas[indice]
-
         descripcion = self.normalizar(
-            fila.get(
+            filas[indice].get(
                 "descripcion",
                 ""
             )
         )
 
-        if not self._es_pregunta_servidor_publico(
-            descripcion
+        if (
+            "TE DESEMPENASTE COMO SERVIDOR PUBLICO"
+            not in descripcion
         ):
             return
 
-        # -----------------------------------------------------
-        # El PDF puede partir la pregunta en 2 filas:
-        #
-        # ¿Te desempeñaste ... inmediato
-        # anterior?
-        #
-        # SI
-        # -----------------------------------------------------
-
-        for siguiente in filas[
+        # La respuesta puede estar en las
+        # siguientes filas.
+        for fila in filas[
             indice + 1:
             indice + 4
         ]:
 
             valor = (
-                siguiente.get(
+                fila.get(
                     "contenido",
                     ""
                 )
-                or siguiente.get(
+                or
+                fila.get(
                     "descripcion",
                     ""
                 )
             ).strip()
 
-            valor_normalizado = self.normalizar(
+            if self.normalizar(
                 valor
-            )
-
-            if valor_normalizado in (
+            ) in (
                 "SI",
                 "SÍ",
                 "NO"
             ):
 
-                nuevo = self._crear_campo(
-                    siguiente,
+                campo = self.crear_campo(
+                    fila,
                     "Servidor público",
                     valor,
-                    "Datos Generales",
-                    True
+                    "Datos Generales"
                 )
 
-                self._agregar_si_no_existe(
+                self.agregar(
                     campos,
-                    nuevo
+                    campo
                 )
 
                 return
 
-    # =========================================================
-    # ANALIZAR DOCUMENTO
-    # =========================================================
+    # =====================================================
+    # ANALIZAR
+    # =====================================================
 
-    def analizar(self, filas):
+    def analizar(
+        self,
+        filas
+    ):
 
         campos = []
 
@@ -856,9 +465,19 @@ class Analizador:
         documento_final = False
 
         print()
-        print("==============================")
-        print("ANALISIS POR SECCIONES")
-        print("==============================")
+        print(
+            "=============================="
+        )
+        print(
+            "ANALISIS POR SECCIONES"
+        )
+        print(
+            "=============================="
+        )
+
+        # =================================================
+        # RECORRER FILAS
+        # =================================================
 
         for indice, fila in enumerate(
             filas
@@ -874,63 +493,38 @@ class Analizador:
                 ""
             ).strip()
 
-            descripcion_normalizada = self.normalizar(
+            desc = self.normalizar(
                 descripcion
             )
 
-            contenido_normalizado = self.normalizar(
-                contenido
-            )
-
-            # =================================================
-            # BLOQUE FINAL
-            # =================================================
-
-            # IMPORTANTE:
-            # La primera página también contiene "BAJO PROTESTA
-            # DE DECIR VERDAD", pero NO es el cierre.
-            #
-            # El cierre real del documento es:
-            # "BAJO PROTESTA DE DECIR VERDAD:"
-            # =================================================
+            # =============================================
+            # CIERRE REAL DEL DOCUMENTO
+            # =============================================
 
             if (
-                descripcion_normalizada.strip()
+                desc
                 == "BAJO PROTESTA DE DECIR VERDAD:"
             ):
 
                 documento_final = True
+
                 continue
 
             if documento_final:
                 continue
 
-            # =================================================
-            # PIE DE PÁGINA
-            # =================================================
+            # =============================================
+            # PIE
+            # =============================================
 
-            if (
-                descripcion_normalizada.startswith("CV ")
-                or descripcion_normalizada.startswith("CD ")
-                or descripcion_normalizada.startswith("PÁG.")
-                or descripcion_normalizada.startswith("PAG.")
-                or "PÁG. " in descripcion_normalizada
-                or "PAG. " in descripcion_normalizada
-                or "DE 18" in descripcion_normalizada
+            if self.es_pie(
+                descripcion
             ):
                 continue
 
-            if (
-                contenido_normalizado.startswith("CV ")
-                or contenido_normalizado.startswith("CD ")
-                or contenido_normalizado.startswith("PÁG.")
-                or contenido_normalizado.startswith("PAG.")
-            ):
-                continue
-
-            # =================================================
-            # FILA VACÍA
-            # =================================================
+            # =============================================
+            # VACÍA
+            # =============================================
 
             if (
                 not descripcion
@@ -938,457 +532,226 @@ class Analizador:
             ):
                 continue
 
-            # =================================================
-            # DETECTAR SECCIÓN
-            # =================================================
+            # =============================================
+            # NUEVA SECCIÓN
+            # =============================================
 
             nueva_seccion = (
                 self.identificar_seccion(
-                    descripcion,
-                    contenido
+                    descripcion
                 )
             )
 
             if nueva_seccion:
 
-                seccion_actual = nueva_seccion
+                seccion_actual = (
+                    nueva_seccion
+                )
 
-                print()
                 print(
-                    f"SECCION: {seccion_actual}"
+                    f"SECCION: "
+                    f"{seccion_actual}"
                 )
 
                 continue
 
-            # =================================================
+            # =============================================
             # SERVIDOR PÚBLICO
-            # =================================================
+            # =============================================
 
-            self._agregar_servidor_publico(
+            self.detectar_servidor_publico(
                 filas,
                 indice,
                 campos
             )
 
-            # =================================================
-            # SI NO HAY SECCIÓN
-            # =================================================
+            # =============================================
+            # SIN SECCIÓN
+            # =============================================
 
             if not seccion_actual:
                 continue
 
-            # =================================================
+            # =============================================
             # ENCABEZADOS
-            # =================================================
+            # =============================================
 
-            if descripcion_normalizada in (
+            if desc in (
                 "DESCRIPCION",
                 "DESCRIPCIÓN",
                 "CONTENIDO"
             ):
                 continue
 
-            # =================================================
-            # CONFIGURACIÓN
-            # =================================================
-
-            configuracion = (
-                self.secciones[
-                    seccion_actual
-                ]
+            modo = self.secciones.get(
+                seccion_actual
             )
 
-            modo = configuracion[
-                "modo"
-            ]
-
             # =================================================
-            # IGNORAR SECCIÓN
+            # IGNORAR
             # =================================================
 
             if modo == "IGNORAR":
+
                 continue
-
-            # =================================================
-            # LISTA
-            # =================================================
-
-            if modo == "LISTA":
-
-                campo_identificado = (
-                    self.identificar_campo(
-                        descripcion,
-                        contenido,
-                        configuracion[
-                            "campos"
-                        ]
-                    )
-                )
-
-                if not campo_identificado:
-                    continue
 
             # =================================================
             # TODO
             # =================================================
 
-            elif modo == "TODO":
+            if modo == "TODO":
 
-                campo_identificado = (
-                    descripcion
-                    if descripcion
-                    else "Campo"
+                if not contenido:
+                    continue
+
+                campo = self.crear_campo(
+                    fila,
+                    descripcion,
+                    contenido,
+                    seccion_actual
                 )
 
-            else:
+                self.agregar(
+                    campos,
+                    campo
+                )
+
+                print(
+                    f"{seccion_actual} | "
+                    f"{descripcion} | "
+                    f"TESTAR"
+                )
 
                 continue
 
             # =================================================
-            # COORDENADAS
+            # SENSIBLES
             # =================================================
 
-            coordenadas = (
-                self.obtener_coordenadas(
-                    fila
-                )
-            )
-
-            if coordenadas is None:
+            if modo != "SENSIBLES":
                 continue
 
-            x, y, ancho, alto = coordenadas
-
             # =================================================
-            # CREAR CAMPO PRINCIPAL
+            # CÓNYUGE
             # =================================================
 
-            campo = {
-
-                "seccion": seccion_actual,
-
-                "campo": campo_identificado,
-
-                "valor": contenido,
-
-                "pagina": fila.get(
-                    "pagina"
-                ),
-
-                "x": x,
-
-                "y": y,
-
-                "ancho": ancho,
-
-                "alto": alto,
-
-                "accion": "IGNORAR",
-
-                "forzar_testado": False
-            }
-
-            # =================================================
-            # REGLAS INMEDIATAS
-            # =================================================
-
-            if seccion_actual in (
-                "Datos de la pareja",
-                "Datos del dependiente económico",
-                "Datos del cónyuge"
-            ):
-
-                campo[
-                    "forzar_testado"
-                ] = True
-
-            if self._contiene_conyuge(
+            if self.contiene_conyuge(
                 descripcion,
                 contenido
             ):
 
-                campo[
-                    "forzar_testado"
-                ] = True
+                campo = self.crear_campo(
+                    fila,
+                    descripcion,
+                    contenido,
+                    seccion_actual
+                )
 
-            if self._es_aclaracion(
-                descripcion
-            ):
-
-                campo[
-                    "forzar_testado"
-                ] = True
-
-            campos.append(
-                campo
-            )
-
-            print(
-                f"{seccion_actual} | "
-                f"{campo_identificado} | "
-                f"{contenido}"
-            )
-
-            # =================================================
-            # MONTOS
-            # =================================================
-
-            self._agregar_montos_de_fila(
-                fila,
-                campos
-            )
+                self.agregar(
+                    campos,
+                    campo
+                )
 
             # =================================================
             # ACLARACIONES
             # =================================================
 
-            self._agregar_aclaracion(
-                fila,
-                campos
-            )
-
-    # =========================================================
-    # CAMPOS ESPECIALES DESPUÉS DEL RECORRIDO
-    # =========================================================
-
-        # =====================================================
-        # FOLIO DE BIENES INMUEBLES
-        # =====================================================
-
-        seccion_bienes = False
-
-        esperar_folio = False
-
-        for fila in filas:
-
-            descripcion = fila.get(
-                "descripcion",
-                ""
-            ).strip()
-
-            contenido = fila.get(
-                "contenido",
-                ""
-            ).strip()
-
-            texto = self.normalizar(
-                descripcion
-            )
-
             if (
-                texto.startswith(
-                    "BIENES INMUEBLES"
+                self.es_aclaracion(
+                    descripcion
                 )
+                and contenido
             ):
 
-                seccion_bienes = True
-                continue
+                campo = self.crear_campo(
+                    fila,
+                    descripcion,
+                    contenido,
+                    seccion_actual
+                )
 
-            if not seccion_bienes:
-                continue
+                self.agregar(
+                    campos,
+                    campo
+                )
 
-            if (
-                "DATOS DEL REGISTRO PUBLICO"
-                in texto
-            ):
+            # =================================================
+            # MONTOS
+            # =================================================
 
-                esperar_folio = True
-                continue
-
-            if esperar_folio:
-
-                candidato = (
+            montos = (
+                self.extraer_montos(
+                    descripcion
+                )
+                +
+                self.extraer_montos(
                     contenido
-                    or descripcion
-                ).strip()
+                )
+            )
 
-                # Folio numérico típico
-                if re.fullmatch(
+            for monto in montos:
+
+                campo = self.crear_campo(
+                    fila,
+                    "Monto",
+                    monto,
+                    seccion_actual
+                )
+
+                self.agregar(
+                    campos,
+                    campo
+                )
+
+            # =================================================
+            # FOLIO DE INMUEBLE
+            # =================================================
+
+            if (
+                seccion_actual
+                == "Bienes inmuebles"
+                and re.fullmatch(
                     r"\d{4,}",
-                    candidato
-                ):
-
-                    nuevo = self._crear_campo(
-                        fila,
-                        "Folio del inmueble",
-                        candidato,
-                        "Bienes inmuebles",
-                        True
-                    )
-
-                    self._agregar_si_no_existe(
-                        campos,
-                        nuevo
-                    )
-
-                    esperar_folio = False
-
-            # Terminar cuando cambia de sección
-            if (
-                texto.startswith(
-                    "VEHICULOS"
-                )
-                or texto.startswith(
-                    "VEHÍCULOS"
+                    contenido
                 )
             ):
 
-                break
+                campo = self.crear_campo(
+                    fila,
+                    "Folio del inmueble",
+                    contenido,
+                    seccion_actual
+                )
 
-        # =====================================================
-        # NOMBRES DE TRANSMISORES EN BIENES
-        # =====================================================
+                self.agregar(
+                    campos,
+                    campo
+                )
 
-        for fila in filas:
-
-            descripcion = fila.get(
-                "descripcion",
-                ""
-            ).strip()
-
-            contenido = fila.get(
-                "contenido",
-                ""
-            ).strip()
-
-            texto = self.normalizar(
-                descripcion
-            )
+            # =================================================
+            # NOMBRE DEL TRANSMISOR
+            # =================================================
 
             if (
+                seccion_actual
+                == "Bienes inmuebles"
+                and
                 "NOMBRE O RAZON SOCIAL DEL TRANSMISOR"
-                in texto
-                or
-                "NOMBRE O RAZON SOCIAL DEL TRANSMISOR DE LA PROPIEDAD"
-                in texto
+                in desc
+                and contenido
             ):
 
-                if contenido:
-
-                    nuevo = self._crear_campo(
-                        fila,
-                        "Nombre del transmisor",
-                        contenido,
-                        "Bienes inmuebles",
-                        True
-                    )
-
-                    self._agregar_si_no_existe(
-                        campos,
-                        nuevo
-                    )
-
-        # =====================================================
-        # REVISAR TODOS LOS CAMPOS POR CÓNYUGE
-        # =====================================================
-
-        for campo in campos:
-
-            if self._contiene_conyuge(
-                campo.get(
-                    "campo",
-                    ""
-                ),
-                campo.get(
-                    "valor",
-                    ""
-                )
-            ):
-
-                campo[
-                    "forzar_testado"
-                ] = True
-
-        # =====================================================
-        # REGISTROS DE CÓNYUGE
-        # =====================================================
-
-        inicio_registro = {}
-        registro_conyuge = {}
-
-        for indice, campo in enumerate(
-            campos
-        ):
-
-            seccion = campo.get(
-                "seccion",
-                ""
-            )
-
-            nombre = self.normalizar(
-                campo.get(
-                    "campo",
-                    ""
-                )
-            )
-
-            valor = self.normalizar(
-                campo.get(
-                    "valor",
-                    ""
-                )
-            )
-
-            if nombre.startswith(
-                "SELECCIONE EL TIPO DE OPERACI"
-            ):
-
-                inicio_registro[
-                    seccion
-                ] = indice
-
-                registro_conyuge[
-                    seccion
-                ] = False
-
-            if (
-                "CONYUGE" in valor
-                or "CÓNYUGE" in valor
-            ):
-
-                registro_conyuge[
-                    seccion
-                ] = True
-
-                inicio = (
-                    inicio_registro.get(
-                        seccion,
-                        indice
-                    )
+                campo = self.crear_campo(
+                    fila,
+                    "Nombre del transmisor",
+                    contenido,
+                    seccion_actual
                 )
 
-                for previo in campos[
-                    inicio:indice + 1
-                ]:
-
-                    if (
-                        previo.get(
-                            "seccion"
-                        )
-                        == seccion
-                    ):
-
-                        previo[
-                            "forzar_testado"
-                        ] = True
-
-            if registro_conyuge.get(
-                seccion,
-                False
-            ):
-
-                campo[
-                    "forzar_testado"
-                ] = True
-
-        # =====================================================
-        # CAMPOS PATRIMONIALES ESPECIALES
-        # =====================================================
-
-        self._agregar_campos_especiales(
-            filas,
-            campos
-        )
+                self.agregar(
+                    campos,
+                    campo
+                )
 
         # =====================================================
         # RESUMEN
@@ -1404,219 +767,22 @@ class Analizador:
         )
 
         print()
-        print("==============================")
         print(
-            f"TOTAL CAMPOS: {len(campos)}"
+            "=============================="
         )
+
         print(
-            f"TOTAL A TESTAR: {total_testar}"
+            f"TOTAL CAMPOS: "
+            f"{len(campos)}"
         )
-        print("==============================")
+
+        print(
+            f"TOTAL A TESTAR: "
+            f"{total_testar}"
+        )
+
+        print(
+            "=============================="
+        )
 
         return campos
-
-    # =========================================================
-    # CAMPOS PATRIMONIALES ESPECIALES
-    # =========================================================
-
-    def _agregar_campos_especiales(
-        self,
-        filas,
-        campos
-    ):
-
-        registro = []
-
-        pagina_anterior = None
-
-        pagina_final = False
-
-        # =====================================================
-        # PROCESAR REGISTRO
-        # =====================================================
-
-        def procesar_registro():
-
-            if not registro:
-                return
-
-            es_conyuge = any(
-
-                self._contiene_conyuge(
-                    fila.get(
-                        "descripcion",
-                        ""
-                    ),
-                    fila.get(
-                        "contenido",
-                        ""
-                    )
-                )
-
-                for fila in registro
-            )
-
-            if not es_conyuge:
-                return
-
-            for fila_registro in registro:
-
-                self._agregar_si_no_existe(
-
-                    campos,
-
-                    self._crear_campo_forzado(
-                        fila_registro,
-                        "Registro conyuge"
-                    )
-                )
-
-        # =====================================================
-        # RECORRER FILAS
-        # =====================================================
-
-        for fila in filas:
-
-            descripcion = fila.get(
-                "descripcion",
-                ""
-            ).strip()
-
-            contenido = fila.get(
-                "contenido",
-                ""
-            ).strip()
-
-            descripcion_normalizada = (
-                self.normalizar(
-                    descripcion
-                )
-            )
-
-            contenido_normalizado = (
-                self.normalizar(
-                    contenido
-                )
-            )
-
-            pagina = fila.get(
-                "pagina"
-            )
-
-            # =================================================
-            # CIERRE DEL DOCUMENTO
-            # =================================================
-
-            if (
-                descripcion_normalizada.strip()
-                == "BAJO PROTESTA DE DECIR VERDAD:"
-            ):
-
-                procesar_registro()
-
-                registro = []
-
-                pagina_final = True
-
-                continue
-
-            if pagina_final:
-                continue
-
-            # =================================================
-            # CAMBIO DE PÁGINA
-            # =================================================
-
-            if (
-                pagina_anterior is not None
-                and pagina != pagina_anterior
-            ):
-
-                procesar_registro()
-
-                registro = []
-
-            pagina_anterior = pagina
-
-            # =================================================
-            # NUEVO REGISTRO
-            # =================================================
-
-            if descripcion_normalizada.startswith(
-                "SELECCIONE EL TIPO DE OPERACI"
-            ):
-
-                procesar_registro()
-
-                registro = []
-
-            # =================================================
-            # AGREGAR FILA AL REGISTRO
-            # =================================================
-
-            if (
-                descripcion
-                and (
-                    contenido
-                    or descripcion
-                )
-                and not self._es_pie_de_pagina(
-                    descripcion
-                )
-            ):
-
-                registro.append(
-                    fila
-                )
-
-            # =================================================
-            # DETECCIÓN DE CÓNYUGE
-            # =================================================
-
-            if self._contiene_conyuge(
-                descripcion,
-                contenido
-            ):
-
-                nuevo = self._crear_campo(
-                    fila,
-                    descripcion,
-                    contenido,
-                    "Registro conyuge",
-                    True
-                )
-
-                self._agregar_si_no_existe(
-                    campos,
-                    nuevo
-                )
-
-            # =================================================
-            # MONTO
-            # =================================================
-
-            if self._extraer_montos(
-                descripcion
-            ) or self._extraer_montos(
-                contenido
-            ):
-
-                self._agregar_montos_de_fila(
-                    fila,
-                    campos
-                )
-
-            # =================================================
-            # ACLARACIONES
-            # =================================================
-
-            self._agregar_aclaracion(
-                fila,
-                campos
-            )
-
-        # =====================================================
-        # PROCESAR ÚLTIMO REGISTRO
-        # =====================================================
-
-        procesar_registro()

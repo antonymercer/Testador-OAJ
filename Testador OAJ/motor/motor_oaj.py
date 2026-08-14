@@ -29,7 +29,7 @@ class MotorOAJ:
         self.filas = []
 
         # ==========================================
-        # RESULTADOS DEL ANÁLISIS
+        # RESULTADOS
         # ==========================================
 
         self.campos = []
@@ -55,7 +55,7 @@ class MotorOAJ:
             )
 
         # ======================================
-        # REINICIAR ESTADO DEL DOCUMENTO
+        # REINICIAR ESTADO
         # ======================================
 
         self.ruta_pdf = ruta_pdf
@@ -88,21 +88,25 @@ class MotorOAJ:
         print("==============================")
         print("PDF CARGADO")
         print("==============================")
+
         print(
             f"Archivo: {ruta_pdf}"
         )
+
         print(
-            f"Bloques/palabras: {len(self.bloques)}"
+            f"Bloques/palabras: "
+            f"{len(self.bloques)}"
         )
 
         # ======================================
-        # MOSTRAR PRIMERA PALABRA
+        # PRIMERA PALABRA
         # ======================================
 
         print()
         print("==============================")
         print("PRIMERA PALABRA")
         print("==============================")
+
         print(
             self.bloques[0]
         )
@@ -125,20 +129,27 @@ class MotorOAJ:
         print("==============================")
         print("FILAS CONSTRUIDAS")
         print("==============================")
+
         print(
-            f"Total de filas: {len(self.filas)}"
+            f"Total de filas: "
+            f"{len(self.filas)}"
         )
+
+        # ======================================
+        # PRIMERA FILA
+        # ======================================
 
         print()
         print("==============================")
         print("PRIMERA FILA")
         print("==============================")
+
         print(
             self.filas[0]
         )
 
         # ======================================
-        # DOCUMENTO CORRECTAMENTE CARGADO
+        # DOCUMENTO CARGADO
         # ======================================
 
         self.documento_cargado = True
@@ -151,16 +162,14 @@ class MotorOAJ:
 
     def analizar(self):
 
-        # ======================================
-        # VALIDAR DOCUMENTO
-        # ======================================
-
         if not self.documento_cargado:
+
             raise Exception(
                 "Primero debe cargar un PDF."
             )
 
         if not self.filas:
+
             raise Exception(
                 "El PDF no contiene filas para analizar."
             )
@@ -178,23 +187,19 @@ class MotorOAJ:
             self.filas
         )
 
-        # ======================================
-        # ASEGURAR QUE SIEMPRE SEA LISTA
-        # ======================================
-
         if resultado is None:
             resultado = []
 
         self.campos = resultado
 
         # ======================================
-        # MARCAR ANÁLISIS COMO REALIZADO
+        # MARCAR ANÁLISIS
         # ======================================
 
         self.analisis_realizado = True
 
         # ======================================
-        # LIMPIAR RESULTADOS ANTERIORES
+        # LIMPIAR REGLAS ANTERIORES
         # ======================================
 
         self.campos_testar = []
@@ -208,8 +213,10 @@ class MotorOAJ:
         print("==============================")
         print("RESULTADO DEL ANÁLISIS")
         print("==============================")
+
         print(
-            f"Campos detectados: {len(self.campos)}"
+            f"Campos detectados: "
+            f"{len(self.campos)}"
         )
 
         if not self.campos:
@@ -230,16 +237,14 @@ class MotorOAJ:
 
     def aplicar_reglas(self):
 
-        # ======================================
-        # VALIDAR ANÁLISIS
-        # ======================================
-
         if not self.documento_cargado:
+
             raise Exception(
                 "Primero debe cargar un PDF."
             )
 
         if not self.analisis_realizado:
+
             raise Exception(
                 "Primero debe analizar el documento."
             )
@@ -249,11 +254,41 @@ class MotorOAJ:
         print("APLICANDO REGLAS")
         print("==============================")
 
+        self.campos_testar = []
+
         # ======================================
-        # REINICIAR CAMPOS A TESTAR
+        # SECCIONES QUE NO SE TESTAN
         # ======================================
 
-        self.campos_testar = []
+        secciones_ignorar = {
+            "Datos Generales",
+            "Domicilio del declarante",
+            "Datos curriculares del declarante",
+            "Datos del empleo, cargo o comisión actual",
+        }
+
+        # ======================================
+        # SECCIONES QUE SE TESTAN COMPLETAS
+        # ======================================
+
+        secciones_todo = {
+            "Datos de la pareja",
+            "Datos del dependiente económico",
+            "Datos del cónyuge",
+        }
+
+        # ======================================
+        # SECCIONES SENSIBLES
+        # ======================================
+
+        secciones_sensibles = {
+            "Ingresos netos del declarante, pareja y/o dependientes económicos",
+            "Bienes inmuebles",
+            "Bienes muebles",
+            "Vehículos",
+            "Inversiones, cuentas bancarias y otro tipo de valores / activos",
+            "Adeudos / pasivos / créditos / tarjetas de crédito o departamentales",
+        }
 
         # ======================================
         # RECORRER CAMPOS
@@ -261,45 +296,152 @@ class MotorOAJ:
 
         for campo in self.campos:
 
-            nombre = campo.get(
-                "campo",
-                ""
+            nombre = str(
+                campo.get(
+                    "campo",
+                    ""
+                )
             )
 
-            seccion = campo.get(
-                "seccion",
-                ""
+            valor = str(
+                campo.get(
+                    "valor",
+                    ""
+                )
             )
 
+            seccion = str(
+                campo.get(
+                    "seccion",
+                    ""
+                )
+            )
+
+            nombre_u = nombre.upper()
+            valor_u = valor.upper()
+
+            accion = "IGNORAR"
+
             # ==================================
-            # REGLA FORZADA
+            # DATOS GENERALES
             # ==================================
 
-            if campo.get(
-                "forzar_testado",
-                False
-            ):
+            if seccion == "Datos Generales":
+
+                if (
+                    "SERVIDOR PÚBLICO"
+                    in nombre_u
+                    or
+                    "SERVIDOR PUBLICO"
+                    in nombre_u
+                ):
+
+                    accion = "TESTAR"
+
+            # ==================================
+            # SECCIONES IGNORADAS
+            # ==================================
+
+            elif seccion in secciones_ignorar:
+
+                accion = "IGNORAR"
+
+            # ==================================
+            # PAREJA / DEPENDIENTE / CÓNYUGE
+            # ==================================
+
+            elif seccion in secciones_todo:
 
                 accion = "TESTAR"
 
-            else:
+            # ==================================
+            # SECCIONES SENSIBLES
+            # ==================================
 
-                accion = (
-                    self.reglas.obtener_accion(
-                        seccion,
-                        nombre
+            elif seccion in secciones_sensibles:
+
+                # --------------------------------
+                # CÓNYUGE
+                # --------------------------------
+
+                if (
+                    "CÓNYUGE" in nombre_u
+                    or
+                    "CONYUGE" in nombre_u
+                    or
+                    "CÓNYUGE" in valor_u
+                    or
+                    "CONYUGE" in valor_u
+                ):
+
+                    accion = "TESTAR"
+
+                # --------------------------------
+                # ACLARACIONES
+                # --------------------------------
+
+                elif (
+                    "ACLARACIONES" in nombre_u
+                    or
+                    "OBSERVACIONES" in nombre_u
+                ):
+
+                    accion = "TESTAR"
+
+                # --------------------------------
+                # FOLIO
+                # --------------------------------
+
+                elif (
+                    "FOLIO" in nombre_u
+                    or
+                    "DATOS DEL REGISTRO" in nombre_u
+                ):
+
+                    accion = "TESTAR"
+
+                # --------------------------------
+                # NOMBRE TRANSMISOR
+                # --------------------------------
+
+                elif (
+                    seccion == "Bienes inmuebles"
+                    and (
+                        "NOMBRE O RAZON SOCIAL DEL TRANSMISOR"
+                        in nombre_u
+                        or
+                        "NOMBRE O RAZÓN SOCIAL DEL TRANSMISOR"
+                        in nombre_u
                     )
-                )
+                ):
+
+                    accion = "TESTAR"
+
+                # --------------------------------
+                # MONTOS
+                # --------------------------------
+
+                elif (
+                    "$" in nombre_u
+                    or
+                    "$" in valor_u
+                    or
+                    "MONTO" in nombre_u
+                    or
+                    "SALDO INSOLUTO" in nombre_u
+                    or
+                    "VALOR DE ADQUISICION" in nombre_u
+                    or
+                    "VALOR DE ADQUISICIÓN" in nombre_u
+                ):
+
+                    accion = "TESTAR"
 
             # ==================================
             # GUARDAR ACCIÓN
             # ==================================
 
             campo["accion"] = accion
-
-            # ==================================
-            # AGREGAR A CAMPOS A TESTAR
-            # ==================================
 
             if accion == "TESTAR":
 
@@ -337,13 +479,17 @@ class MotorOAJ:
         mostrar = sum(
             1
             for campo in self.campos
-            if campo.get("accion") == "MOSTRAR"
+            if campo.get(
+                "accion"
+            ) == "MOSTRAR"
         )
 
         ignorar = sum(
             1
             for campo in self.campos
-            if campo.get("accion") == "IGNORAR"
+            if campo.get(
+                "accion"
+            ) == "IGNORAR"
         )
 
         testar = len(
@@ -354,18 +500,24 @@ class MotorOAJ:
         print("==============================")
         print("RESUMEN DE REGLAS")
         print("==============================")
+
         print(
-            f"Campos detectados: {len(self.campos)}"
+            f"Campos detectados: "
+            f"{len(self.campos)}"
         )
+
         print(
             f"TESTAR: {testar}"
         )
+
         print(
             f"MOSTRAR: {mostrar}"
         )
+
         print(
             f"IGNORAR: {ignorar}"
         )
+
         print("==============================")
         print()
 
@@ -377,53 +529,43 @@ class MotorOAJ:
 
     def generar_pdf(self):
 
-        # ======================================
-        # VALIDAR PDF
-        # ======================================
-
         if not self.documento_cargado:
+
             raise Exception(
                 "No hay PDF cargado."
             )
 
         if not self.ruta_pdf:
+
             raise Exception(
                 "No hay una ruta de PDF disponible."
             )
 
-        # ======================================
-        # VALIDAR ANÁLISIS
-        # ======================================
-
         if not self.analisis_realizado:
+
             raise Exception(
                 "Primero debe analizar el documento."
             )
 
-        # ======================================
-        # VALIDAR REGLAS
-        # ======================================
-
         if not self.reglas_aplicadas:
+
             raise Exception(
                 "Primero deben aplicarse las reglas."
             )
 
         # ======================================
-        # CASO: ANÁLISIS SIN CAMPOS
+        # SIN CAMPOS
         # ======================================
 
         if not self.campos:
 
             raise Exception(
                 "El documento fue analizado, "
-                "pero no se detectaron campos.\n\n"
-                "Revise el formato del PDF y las "
-                "secciones configuradas en el analizador."
+                "pero no se detectaron campos."
             )
 
         # ======================================
-        # CASO: NO HAY CAMPOS PARA TESTAR
+        # SIN CAMPOS A TESTAR
         # ======================================
 
         if not self.campos_testar:
@@ -434,18 +576,19 @@ class MotorOAJ:
                 "marcados para testar."
             )
 
-        # ======================================
-        # GENERAR PDF
-        # ======================================
-
         print()
         print("==============================")
         print("GENERANDO PDF")
         print("==============================")
+
         print(
             f"Campos a testar: "
             f"{len(self.campos_testar)}"
         )
+
+        # ======================================
+        # REDACTOR
+        # ======================================
 
         ruta = self.redactor.generar_pdf(
             self.ruta_pdf,
